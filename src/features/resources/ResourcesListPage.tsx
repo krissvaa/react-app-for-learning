@@ -120,7 +120,7 @@ export default function ResourcesListPage() {
       {isLoading ? (
         <Grid container spacing={2}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={i} item xs={12} sm={6} md={4}>
               <Skeleton variant="rounded" height={200} />
             </Grid>
           ))}
@@ -132,7 +132,7 @@ export default function ResourcesListPage() {
       ) : viewMode === 'grid' ? (
         <Grid container spacing={2}>
           {filtered.map((resource: Resource) => (
-            <Grid key={resource.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={resource.id} item xs={12} sm={6} md={4}>
               <ResourceCard resource={resource} />
             </Grid>
           ))}

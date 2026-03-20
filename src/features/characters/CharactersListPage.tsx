@@ -90,14 +90,12 @@ export default function CharactersListPage() {
             placeholder="Search by name..."
             value={searchQuery}
             onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              },
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
             }}
             sx={{ minWidth: 200 }}
           />
@@ -152,7 +150,7 @@ export default function CharactersListPage() {
         <Box sx={{ opacity: isFetching ? 0.5 : 1, transition: 'opacity 0.2s' }}>
           <Grid container spacing={3}>
             {characters.map((character) => (
-              <Grid key={character.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <Grid item key={character.id} xs={12} sm={6} md={4} lg={3}>
                 <CharacterCard character={character} />
               </Grid>
             ))}

@@ -23,9 +23,9 @@ export default function AppHeader({ onMenuToggle }: AppHeaderProps) {
         <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
           LearnHub
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box id="tour-header-actions" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <ThemeToggle />
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>U</Avatar>
+          <Avatar id="tour-avatar" sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>U</Avatar>
         </Box>
       </Toolbar>
     </AppBar>

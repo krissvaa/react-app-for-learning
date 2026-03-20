@@ -47,12 +47,12 @@ export default function UsersPage() {
       <Grid container spacing={2}>
         {loading
           ? Array.from({ length: 6 }).map((_, i) => (
-              <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Grid key={i} item xs={12} sm={6} md={4}>
                 <Skeleton variant="rounded" height={180} />
               </Grid>
             ))
           : users.map((user) => (
-              <Grid key={user.id} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Grid key={user.id} item xs={12} sm={6} md={4}>
                 <Card sx={{ height: '100%' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>

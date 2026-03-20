@@ -28,23 +28,23 @@ export default function DashboardPage() {
       <Timer />
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard title="Total Resources" value={totalResources} icon={<SchoolIcon />} color="#1976d2" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard title="Bookmarks" value={bookmarkIds.length} icon={<BookmarkIcon />} color="#9c27b0" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard title="Completed" value={completedCount} icon={<CheckCircleIcon />} color="#2e7d32" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <StatCard title="Categories" value={categoriesCount} icon={<TrendingUpIcon />} color="#ed6c02" />
         </Grid>
 
-        <Grid size={{ xs: 12, md: 7 }}>
+        <Grid item xs={12} md={7}>
           <RecentActivity />
         </Grid>
-        <Grid size={{ xs: 12, md: 5 }}>
+        <Grid item xs={12} md={5}>
           <Counter />
         </Grid>
       </Grid>

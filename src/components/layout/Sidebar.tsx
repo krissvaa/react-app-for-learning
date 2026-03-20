@@ -53,7 +53,7 @@ export default function Sidebar({ open, onClose, variant }: SidebarProps) {
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
-      <List sx={{ flex: 1 }}>
+      <List id="tour-sidebar-nav" sx={{ flex: 1 }}>
         {mainLinks.map((link) => (
           <ListItemButton
             key={link.to}

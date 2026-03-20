@@ -1,10 +1,6 @@
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Box from '@mui/material/Box';
 import useLocalStorage from '../hooks/useLocalStorage';
@@ -105,58 +101,80 @@ export default function DisclaimerDialog({ children }: DisclaimerDialogProps) {
 
       {!isAccepted && (
         <Dialog
-      open
-      fullWidth
-      maxWidth="sm"
-      role="alertdialog"
-      aria-labelledby="disclaimer-title"
-      aria-describedby="disclaimer-content"
-      disableEscapeKeyDown
-      slotProps={{ backdrop: { sx: { backdropFilter: 'blur(4px)' } } }}
-    >
-      <DialogTitle id="disclaimer-title" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <WarningAmberIcon color="warning" />
-        {disclaimerContent.title}
-      </DialogTitle>
-
-      <Divider />
-
-      <DialogContent id="disclaimer-content">
-        <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-          {disclaimerContent.heading}
-        </Typography>
-
-        {disclaimerContent.paragraphs.map((text, i) => (
-          <Typography key={i} variant="body2" color="text.secondary" paragraph>
-            {text}
-          </Typography>
-        ))}
-
-        <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, mt: 2 }}>
-          <Typography variant="body2" fontWeight="bold">
-            By proceeding, you acknowledge that:
-          </Typography>
-          <Typography variant="body2" color="text.secondary" component="ul" sx={{ mt: 1, pl: 2 }}>
-            {disclaimerContent.acknowledgements.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </Typography>
-        </Box>
-      </DialogContent>
-
-      <Divider />
-
-      <DialogActions sx={{ p: 2, gap: 1 }}>
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleAccept}
-          autoFocus
+          open
+          fullScreen
+          role="alertdialog"
+          aria-labelledby="disclaimer-title"
+          aria-describedby="disclaimer-content"
+          disableEscapeKeyDown
+          BackdropProps={{ sx: { backgroundColor: 'background.default' } }}
+          PaperProps={{ sx: { backgroundColor: 'background.default' } }}
         >
-          {disclaimerContent.acceptLabel}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          {/* Center content vertically and horizontally on the full page */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '100vh',
+              p: 3,
+            }}
+          >
+            <Box sx={{ maxWidth: 520, width: '100%' }}>
+              <Box id="disclaimer-title" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                <WarningAmberIcon color="warning" sx={{ fontSize: 32 }} />
+                <Typography variant="h4" fontWeight="bold">
+                  {disclaimerContent.title}
+                </Typography>
+              </Box>
+
+              <Box id="disclaimer-content">
+                <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                  {disclaimerContent.heading}
+                </Typography>
+
+                {disclaimerContent.paragraphs.map((text, i) => (
+                  <Typography key={i} variant="body2" color="text.secondary" paragraph>
+                    {text}
+                  </Typography>
+                ))}
+
+                <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, p: 2, mt: 2 }}>
+                  <Typography variant="body2" fontWeight="bold">
+                    By proceeding, you acknowledge that:
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" component="ul" sx={{ mt: 1, pl: 2 }}>
+                    {disclaimerContent.acknowledgements.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-start', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleAccept}
+                  autoFocus
+                >
+                  {disclaimerContent.acceptLabel}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  color="error"
+                  onClick={() => {
+                    window.location.href = 'about:blank';
+                  }}
+                >
+                  Reject
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </Dialog>
       )}
     </>
   );

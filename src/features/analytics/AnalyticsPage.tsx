@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
       />
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Completion Rate</Typography>
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Popular Tags</Typography>
@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>By Category</Typography>
@@ -105,7 +105,7 @@ export default function AnalyticsPage() {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>By Difficulty</Typography>

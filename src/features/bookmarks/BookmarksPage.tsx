@@ -37,7 +37,7 @@ export default function BookmarksPage() {
       ) : (
         <Grid container spacing={2}>
           {bookmarkedResources.map((resource) => (
-            <Grid key={resource.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={resource.id} item xs={12} sm={6} md={4}>
               <ResourceCard resource={resource} />
             </Grid>
           ))}

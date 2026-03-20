@@ -63,7 +63,7 @@ export default function AboutPage() {
 
       <Grid container spacing={2}>
         {features.map((feature) => (
-          <Grid key={feature.title} size={{ xs: 12, sm: 6 }}>
+          <Grid key={feature.title} item xs={12} sm={6}>
             <Card sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>{feature.title}</Typography>
