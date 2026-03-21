@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { useTheme } from '@mui/material/styles';
 import GlobalStyles from '@mui/material/GlobalStyles';
 import useDriverTour, { type PortalTarget } from '../hooks/useDriverTour';
@@ -35,8 +35,14 @@ export default function DriverTour() {
   const theme = useTheme();
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
+  // LEARNING NOTE: flushSync forces React to process this state update
+  // synchronously — the portal is committed to the DOM before this callback
+  // returns. Without it, React 19 would batch the update and the popover
+  // would briefly appear empty before the portal content renders.
   const handlePopoverRender = useCallback((target: PortalTarget) => {
-    setPortalTarget(target);
+    flushSync(() => {
+      setPortalTarget(target);
+    });
   }, []);
 
   useDriverTour({ onPopoverRender: handlePopoverRender });

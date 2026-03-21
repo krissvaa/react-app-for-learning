@@ -21,10 +21,17 @@ import useLocalStorage from './useLocalStorage';
 // Flow:
 //   1. useDriverTour creates the Driver instance with step configs
 //   2. Each step's `onPopoverRender` fires when driver.js creates the popover
-//   3. The callback stores { stepIndex, descriptionEl } in a ref
-//   4. A state update triggers React to re-render DriverTour.tsx
+//   3. The callback receives { stepIndex, descriptionEl } and calls setState
+//   4. flushSync forces React to synchronously re-render DriverTour.tsx
 //   5. DriverTour uses createPortal to render the React component into descriptionEl
 //   6. Result: real MUI components inside driver.js popovers
+//
+// Why flushSync? React 19 batches all state updates by default — even those
+// triggered outside React event handlers (like driver.js callbacks). Without
+// flushSync, the portal would render AFTER onPopoverRender returns, causing
+// the popover to briefly flash empty. flushSync forces React to process the
+// state update and commit the portal to the DOM immediately, before the
+// callback returns — so driver.js never shows an empty popover.
 
 const TOUR_VERSION = 1;
 const STORAGE_KEY = 'driver_tour_completed';
@@ -94,7 +101,9 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
           // Step 1: No element — centered welcome (rendered via React portal)
           popover: {
             title: 'Welcome to LearnHub!',
-            description: '', // cleared by portal
+            // Must be non-empty so driver.js creates the description DOM element.
+            // The portal replaces this content immediately via flushSync.
+            description: '\u00A0',
             align: 'center',
             onPopoverRender: withPortal(0),
           },
