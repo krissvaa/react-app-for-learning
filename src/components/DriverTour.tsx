@@ -1,109 +1,132 @@
+import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '@mui/material/styles';
 import GlobalStyles from '@mui/material/GlobalStyles';
-import useDriverTour from '../hooks/useDriverTour';
+import useDriverTour, { type PortalTarget } from '../hooks/useDriverTour';
+import WelcomeStep from './tour/WelcomeStep';
 
-// LEARNING NOTE: Bridging driver.js styles with MUI v5
+// LEARNING NOTE: React Portals bridge driver.js ↔ React 19 ↔ MUI v5
 //
-// driver.js renders its own DOM (overlay, popover, buttons) outside of React's
-// tree. MUI's ThemeProvider and sx prop can't reach it. We solve this with
-// MUI's GlobalStyles component, which injects <style> into the document head.
+// Problem: driver.js creates DOM nodes outside React's tree. Normally you
+// can't render React components there — no ThemeProvider, no context, no hooks.
 //
-// By reading palette values from useTheme() and passing them to GlobalStyles,
-// the driver.js popover automatically matches the current MUI theme — including
-// dark mode. When the theme changes, React re-renders this component and
-// GlobalStyles updates the CSS.
+// Solution: createPortal(element, domNode) renders a React element into any
+// DOM node while preserving the React context tree. The portal "lives" in
+// React's component hierarchy (so it inherits ThemeProvider, Redux store, etc.)
+// but its output appears in the target DOM node.
 //
-// We scope our overrides under .driver-theme-light / .driver-theme-dark using
-// driver.js's `popoverClass` option so they don't leak into the rest of the app.
+// How it works here:
+//   1. driver.js fires `onPopoverRender` with the popover's description element
+//   2. We store that element reference in state (triggers a re-render)
+//   3. In the render, we use createPortal to inject a React component into it
+//   4. The component (WelcomeStep) uses MUI's Avatar, Typography, Chip — all
+//      fully themed, because the portal inherits context from DriverTour's
+//      position in the tree (inside ThemeProvider)
+//
+// This pattern works for any imperative DOM library (driver.js, tippy.js,
+// intro.js, etc.) — anywhere you have a DOM node and want React inside it.
+
+// Map step indices to React components
+const STEP_COMPONENTS: Record<number, React.ComponentType> = {
+  0: WelcomeStep,
+};
 
 export default function DriverTour() {
   const theme = useTheme();
-  useDriverTour();
+  const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
+
+  const handlePopoverRender = useCallback((target: PortalTarget) => {
+    setPortalTarget(target);
+  }, []);
+
+  useDriverTour({ onPopoverRender: handlePopoverRender });
 
   const { palette, typography, shape } = theme;
 
+  // Determine which React component to render for the current step
+  const StepComponent = portalTarget ? STEP_COMPONENTS[portalTarget.stepIndex] : null;
+
   return (
-    <GlobalStyles
-      styles={{
-        // Popover container
-        '.driver-popover': {
-          backgroundColor: `${palette.background.paper} !important`,
-          color: `${palette.text.primary} !important`,
-          borderRadius: `${shape.borderRadius}px !important`,
-          fontFamily: `${typography.fontFamily} !important`,
-          boxShadow: `${theme.shadows[8]} !important`,
-          border: `1px solid ${palette.divider} !important`,
-        },
-        // Title
-        '.driver-popover .driver-popover-title': {
-          fontFamily: `${typography.fontFamily} !important`,
-          fontSize: `${typography.h6.fontSize} !important`,
-          fontWeight: `${typography.h6.fontWeight} !important`,
-          color: `${palette.text.primary} !important`,
-        },
-        // Description
-        '.driver-popover .driver-popover-description': {
-          fontFamily: `${typography.fontFamily} !important`,
-          color: `${palette.text.secondary} !important`,
-          fontSize: '0.9rem !important',
-          lineHeight: '1.5 !important',
-        },
-        // Progress text
-        '.driver-popover .driver-popover-progress-text': {
-          color: `${palette.text.secondary} !important`,
-          fontFamily: `${typography.fontFamily} !important`,
-        },
-        // Navigation buttons
-        '.driver-popover .driver-popover-navigation-btns button': {
-          fontFamily: `${typography.fontFamily} !important`,
-          textTransform: 'none !important' as 'none',
-          borderRadius: '8px !important',
-          padding: '6px 16px !important',
-          fontSize: '0.875rem !important',
-          fontWeight: '500 !important',
-        },
-        // Next / Done button — matches MUI contained primary
-        '.driver-popover .driver-popover-next-btn': {
-          backgroundColor: `${palette.primary.main} !important`,
-          color: `${palette.primary.contrastText} !important`,
-          border: 'none !important',
-          '&:hover': {
-            backgroundColor: `${palette.primary.dark} !important`,
+    <>
+      {/* Portal: render React component into driver.js popover DOM */}
+      {StepComponent && portalTarget && createPortal(
+        <StepComponent />,
+        portalTarget.descriptionEl,
+      )}
+
+      <GlobalStyles
+        styles={{
+          '.driver-popover': {
+            backgroundColor: `${palette.background.paper} !important`,
+            color: `${palette.text.primary} !important`,
+            borderRadius: `${shape.borderRadius}px !important`,
+            fontFamily: `${typography.fontFamily} !important`,
+            boxShadow: `${theme.shadows[8]} !important`,
+            border: `1px solid ${palette.divider} !important`,
           },
-        },
-        // Previous button — matches MUI outlined style
-        '.driver-popover .driver-popover-prev-btn': {
-          backgroundColor: 'transparent !important',
-          color: `${palette.primary.main} !important`,
-          border: `1px solid ${palette.primary.main} !important`,
-          '&:hover': {
-            backgroundColor: `${palette.action.hover} !important`,
-          },
-        },
-        // Close button
-        '.driver-popover .driver-popover-close-btn': {
-          color: `${palette.text.secondary} !important`,
-          '&:hover': {
+          '.driver-popover .driver-popover-title': {
+            fontFamily: `${typography.fontFamily} !important`,
+            fontSize: `${typography.h6.fontSize} !important`,
+            fontWeight: `${typography.h6.fontWeight} !important`,
             color: `${palette.text.primary} !important`,
           },
-        },
-        // Arrow — match popover background
-        '.driver-popover-arrow': {
-          borderColor: `${palette.background.paper} !important`,
-        },
-        '.driver-popover-arrow-side-left.driver-popover-arrow': {
-          borderLeftColor: `${palette.background.paper} !important`,
-        },
-        '.driver-popover-arrow-side-right.driver-popover-arrow': {
-          borderRightColor: `${palette.background.paper} !important`,
-        },
-        '.driver-popover-arrow-side-top.driver-popover-arrow': {
-          borderTopColor: `${palette.background.paper} !important`,
-        },
-        '.driver-popover-arrow-side-bottom.driver-popover-arrow': {
-          borderBottomColor: `${palette.background.paper} !important`,
-        },
-      }}
-    />
+          '.driver-popover .driver-popover-description': {
+            fontFamily: `${typography.fontFamily} !important`,
+            color: `${palette.text.secondary} !important`,
+            fontSize: '0.9rem !important',
+            lineHeight: '1.5 !important',
+          },
+          '.driver-popover .driver-popover-progress-text': {
+            color: `${palette.text.secondary} !important`,
+            fontFamily: `${typography.fontFamily} !important`,
+          },
+          '.driver-popover .driver-popover-navigation-btns button': {
+            fontFamily: `${typography.fontFamily} !important`,
+            textTransform: 'none !important' as 'none',
+            borderRadius: '8px !important',
+            padding: '6px 16px !important',
+            fontSize: '0.875rem !important',
+            fontWeight: '500 !important',
+          },
+          '.driver-popover .driver-popover-next-btn': {
+            backgroundColor: `${palette.primary.main} !important`,
+            color: `${palette.primary.contrastText} !important`,
+            border: 'none !important',
+            '&:hover': {
+              backgroundColor: `${palette.primary.dark} !important`,
+            },
+          },
+          '.driver-popover .driver-popover-prev-btn': {
+            backgroundColor: 'transparent !important',
+            color: `${palette.primary.main} !important`,
+            border: `1px solid ${palette.primary.main} !important`,
+            '&:hover': {
+              backgroundColor: `${palette.action.hover} !important`,
+            },
+          },
+          '.driver-popover .driver-popover-close-btn': {
+            color: `${palette.text.secondary} !important`,
+            '&:hover': {
+              color: `${palette.text.primary} !important`,
+            },
+          },
+          '.driver-popover-arrow': {
+            borderColor: `${palette.background.paper} !important`,
+          },
+          '.driver-popover-arrow-side-left.driver-popover-arrow': {
+            borderLeftColor: `${palette.background.paper} !important`,
+          },
+          '.driver-popover-arrow-side-right.driver-popover-arrow': {
+            borderRightColor: `${palette.background.paper} !important`,
+          },
+          '.driver-popover-arrow-side-top.driver-popover-arrow': {
+            borderTopColor: `${palette.background.paper} !important`,
+          },
+          '.driver-popover-arrow-side-bottom.driver-popover-arrow': {
+            borderBottomColor: `${palette.background.paper} !important`,
+          },
+        }}
+      />
+    </>
   );
 }
