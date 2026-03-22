@@ -6,37 +6,31 @@ import useLocalStorage from './useLocalStorage';
 
 // LEARNING NOTE: Integrating driver.js with React 19 + MUI v5 (Portal pattern)
 //
-// Challenge: driver.js is an imperative DOM library that creates its own DOM
-// outside React's tree. MUI components and sx props can't be used in raw HTML
-// strings passed to driver.js's `description` field.
+// We take over driver.js's UI entirely:
+//   - Built-in prev/next buttons, progress text, and close button are hidden
+//   - A custom React footer (TourFooter) with bubble indicators + OK/Skip
+//     is portaled into every step's popover via onPopoverRender
+//   - allowClose: false prevents overlay clicks and escape from dismissing
+//   - The only way to close is via our OK (advance) or Skip (exit) buttons
 //
-// Solution — React Portals:
-//   driver.js has an `onPopoverRender` callback that gives us the popover's
-//   DOM node. We pass this node back to the React component (DriverTour.tsx)
-//   which uses createPortal to render a real React component INTO driver.js's
-//   popover. Because portals preserve React's context tree, MUI's ThemeProvider,
-//   sx props, and all hooks work inside the popover — even though the DOM node
-//   lives outside React's root.
-//
-// Flow:
-//   1. useDriverTour creates the Driver instance with step configs
-//   2. Each step's `onPopoverRender` fires when driver.js creates the popover
-//   3. The callback receives { stepIndex, descriptionEl } and calls setState
-//   4. flushSync forces React to synchronously re-render DriverTour.tsx
-//   5. DriverTour uses createPortal to render the React component into descriptionEl
-//   6. Result: real MUI components inside driver.js popovers
-//
-// Why flushSync? React 19 batches all state updates by default — even those
-// triggered outside React event handlers (like driver.js callbacks). Without
-// flushSync, the portal would render AFTER onPopoverRender returns, causing
-// the popover to briefly flash empty. flushSync forces React to process the
-// state update and commit the portal to the DOM immediately, before the
-// callback returns — so driver.js never shows an empty popover.
+// The hook exposes imperative methods (moveTo, nextStep, skipTour) so the
+// portaled footer component can control the driver instance.
 
 const TOUR_VERSION = 1;
 const STORAGE_KEY = 'driver_tour_completed';
 const DISCLAIMER_KEY = 'disclaimer_acceptance';
 const ONBOARDING_KEY = 'onboarding_completed';
+
+export const TOUR_STEP_COUNT = 5;
+
+// Per-step OK button labels — customizable for each step
+export const TOUR_OK_LABELS: string[] = [
+  'Get Started',   // Step 1: Welcome
+  'Got it',        // Step 2: Sidebar
+  'Nice',          // Step 3: Main content
+  'Cool',          // Step 4: Theme toggle
+  "Let's Go!",     // Step 5: Profile (last step)
+];
 
 interface TourCompletion {
   version: number;
@@ -50,6 +44,7 @@ interface VersionedRecord {
 export interface PortalTarget {
   stepIndex: number;
   descriptionEl: Element;
+  footerEl: Element;
 }
 
 interface UseDriverTourOptions {
@@ -80,29 +75,54 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
     });
   }, [setCompletion]);
 
+  // Imperative controls exposed to the portal footer component
+  const moveTo = useCallback((index: number) => {
+    driverRef.current?.moveTo(index);
+  }, []);
+
+  const nextStep = useCallback(() => {
+    if (!driverRef.current?.isActive()) return;
+    if (!driverRef.current.hasNextStep()) {
+      // Last step — finish the tour
+      driverRef.current.destroy();
+    } else {
+      driverRef.current.moveNext();
+    }
+  }, []);
+
+  const skipTour = useCallback(() => {
+    driverRef.current?.destroy();
+  }, []);
+
   useEffect(() => {
     if (isCompleted || !prerequisitesDone) return;
 
     const timeout = setTimeout(() => {
       const isDark = theme.palette.mode === 'dark';
 
-      // Helper: wraps onPopoverRender to call back with the description element
+      // Every step gets onPopoverRender so we can portal the custom footer.
+      // We hide the built-in footer and inject a container div for our portal.
       const withPortal = (stepIndex: number) => (_popover: PopoverDOM) => {
-        // Clear description text — React portal will fill it
-        _popover.description.innerHTML = '';
+        // Hide driver.js's built-in navigation and close button
+        _popover.footer.style.display = 'none';
+        _popover.wrapper.querySelector('.driver-popover-close-btn')?.remove();
+
+        // Create a container for our React portal footer
+        const footerEl = document.createElement('div');
+        footerEl.className = 'driver-tour-custom-footer';
+        _popover.wrapper.appendChild(footerEl);
+
         onPopoverRenderRef.current?.({
           stepIndex,
           descriptionEl: _popover.description,
+          footerEl,
         });
       };
 
       const steps: DriveStep[] = [
         {
-          // Step 1: No element — centered welcome (rendered via React portal)
           popover: {
             title: 'Welcome to LearnHub!',
-            // Must be non-empty so driver.js creates the description DOM element.
-            // The portal replaces this content immediately via flushSync.
             description: '\u00A0',
             align: 'center',
             onPopoverRender: withPortal(0),
@@ -116,6 +136,7 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
               'Use the sidebar to jump between features — Dashboard, Resources, Characters, and more. Each page demonstrates different React patterns.',
             side: 'right',
             align: 'start',
+            onPopoverRender: withPortal(1),
           },
         },
         {
@@ -126,6 +147,7 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
               'This is where each feature renders. Try the Dashboard for hooks demos, Resources for CRUD with RTK Query, or Characters for API pagination.',
             side: 'left',
             align: 'start',
+            onPopoverRender: withPortal(2),
           },
         },
         {
@@ -136,6 +158,7 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
               "Switch between light and dark mode. This uses a custom React Context with MUI's ThemeProvider — a common pattern in MUI v5 apps.",
             side: 'bottom',
             align: 'end',
+            onPopoverRender: withPortal(3),
           },
         },
         {
@@ -146,21 +169,20 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
               "This is where user settings and profile info would live in a production app. For now, it's a placeholder — but the layout is ready!",
             side: 'bottom',
             align: 'end',
+            onPopoverRender: withPortal(4),
           },
         },
       ];
 
       driverRef.current = driver({
-        showProgress: true,
+        showProgress: false,
+        showButtons: [],       // hide all built-in buttons
         animate: true,
-        allowClose: true,
+        allowClose: false,     // no overlay click, no escape key
         overlayColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
         stagePadding: 8,
         stageRadius: 12,
         popoverClass: `driver-theme-${theme.palette.mode}`,
-        nextBtnText: 'Next →',
-        prevBtnText: '← Back',
-        doneBtnText: "Let's Go!",
         steps,
         onDestroyed: () => {
           markCompleted();
@@ -183,5 +205,5 @@ export default function useDriverTour({ onPopoverRender }: UseDriverTourOptions 
     setCompletion(null);
   }, [setCompletion]);
 
-  return { isCompleted, restartTour };
+  return { isCompleted, restartTour, moveTo, nextStep, skipTour };
 }

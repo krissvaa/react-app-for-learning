@@ -2,31 +2,20 @@ import { useState, useCallback } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { useTheme } from '@mui/material/styles';
 import GlobalStyles from '@mui/material/GlobalStyles';
-import useDriverTour, { type PortalTarget } from '../hooks/useDriverTour';
+import useDriverTour, { type PortalTarget, TOUR_STEP_COUNT, TOUR_OK_LABELS } from '../hooks/useDriverTour';
 import WelcomeStep from './tour/WelcomeStep';
+import TourFooter from './tour/TourFooter';
 
 // LEARNING NOTE: React Portals bridge driver.js ↔ React 19 ↔ MUI v5
 //
-// Problem: driver.js creates DOM nodes outside React's tree. Normally you
-// can't render React components there — no ThemeProvider, no context, no hooks.
+// We now portal TWO things into driver.js's popover:
+//   1. Content portal (step 0 only) — WelcomeStep component into description el
+//   2. Footer portal (every step) — TourFooter with bubbles + OK/Skip buttons
 //
-// Solution: createPortal(element, domNode) renders a React element into any
-// DOM node while preserving the React context tree. The portal "lives" in
-// React's component hierarchy (so it inherits ThemeProvider, Redux store, etc.)
-// but its output appears in the target DOM node.
-//
-// How it works here:
-//   1. driver.js fires `onPopoverRender` with the popover's description element
-//   2. We store that element reference in state (triggers a re-render)
-//   3. In the render, we use createPortal to inject a React component into it
-//   4. The component (WelcomeStep) uses MUI's Avatar, Typography, Chip — all
-//      fully themed, because the portal inherits context from DriverTour's
-//      position in the tree (inside ThemeProvider)
-//
-// This pattern works for any imperative DOM library (driver.js, tippy.js,
-// intro.js, etc.) — anywhere you have a DOM node and want React inside it.
+// Both portals inherit MUI's ThemeProvider context, so sx props, palette
+// colors, and MUI components all work inside driver.js's external DOM.
 
-// Map step indices to React components
+// Map step indices to React components for custom content
 const STEP_COMPONENTS: Record<number, React.ComponentType> = {
   0: WelcomeStep,
 };
@@ -35,29 +24,37 @@ export default function DriverTour() {
   const theme = useTheme();
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
-  // LEARNING NOTE: flushSync forces React to process this state update
-  // synchronously — the portal is committed to the DOM before this callback
-  // returns. Without it, React 19 would batch the update and the popover
-  // would briefly appear empty before the portal content renders.
-  const handlePopoverRender = useCallback((target: PortalTarget) => {
-    flushSync(() => {
-      setPortalTarget(target);
-    });
-  }, []);
-
-  useDriverTour({ onPopoverRender: handlePopoverRender });
+  const { moveTo, nextStep, skipTour } = useDriverTour({
+    onPopoverRender: useCallback((target: PortalTarget) => {
+      flushSync(() => {
+        setPortalTarget(target);
+      });
+    }, []),
+  });
 
   const { palette, typography, shape } = theme;
 
-  // Determine which React component to render for the current step
   const StepComponent = portalTarget ? STEP_COMPONENTS[portalTarget.stepIndex] : null;
 
   return (
     <>
-      {/* Portal: render React component into driver.js popover DOM */}
+      {/* Content portal: custom React component for specific steps */}
       {StepComponent && portalTarget && createPortal(
         <StepComponent />,
         portalTarget.descriptionEl,
+      )}
+
+      {/* Footer portal: bubble indicators + OK/Skip on every step */}
+      {portalTarget && createPortal(
+        <TourFooter
+          activeStep={portalTarget.stepIndex}
+          totalSteps={TOUR_STEP_COUNT}
+          okLabel={TOUR_OK_LABELS[portalTarget.stepIndex] ?? 'OK'}
+          onBubbleClick={moveTo}
+          onOk={nextStep}
+          onSkip={skipTour}
+        />,
+        portalTarget.footerEl,
       )}
 
       <GlobalStyles
@@ -82,40 +79,11 @@ export default function DriverTour() {
             fontSize: '0.9rem !important',
             lineHeight: '1.5 !important',
           },
-          '.driver-popover .driver-popover-progress-text': {
-            color: `${palette.text.secondary} !important`,
-            fontFamily: `${typography.fontFamily} !important`,
+          // Custom footer container padding
+          '.driver-tour-custom-footer': {
+            padding: '0 16px 16px !important',
           },
-          '.driver-popover .driver-popover-navigation-btns button': {
-            fontFamily: `${typography.fontFamily} !important`,
-            textTransform: 'none !important' as 'none',
-            borderRadius: '8px !important',
-            padding: '6px 16px !important',
-            fontSize: '0.875rem !important',
-            fontWeight: '500 !important',
-          },
-          '.driver-popover .driver-popover-next-btn': {
-            backgroundColor: `${palette.primary.main} !important`,
-            color: `${palette.primary.contrastText} !important`,
-            border: 'none !important',
-            '&:hover': {
-              backgroundColor: `${palette.primary.dark} !important`,
-            },
-          },
-          '.driver-popover .driver-popover-prev-btn': {
-            backgroundColor: 'transparent !important',
-            color: `${palette.primary.main} !important`,
-            border: `1px solid ${palette.primary.main} !important`,
-            '&:hover': {
-              backgroundColor: `${palette.action.hover} !important`,
-            },
-          },
-          '.driver-popover .driver-popover-close-btn': {
-            color: `${palette.text.secondary} !important`,
-            '&:hover': {
-              color: `${palette.text.primary} !important`,
-            },
-          },
+          // Arrow — match popover background
           '.driver-popover-arrow': {
             borderColor: `${palette.background.paper} !important`,
           },
